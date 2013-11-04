@@ -1,0 +1,83 @@
+function As = swank(energy,L_Se)
+% clear all; close all; clc;
+% L_Se=200; %um
+% energyall=1:28;
+% for k=1:length(energyall)
+% energy=energyall(k);
+
+
+%% Function name:       swank
+%% Original IDL Call:   SWANK
+%% Version Number:      1.0
+%% Description and Usage
+% Calculate Swank factor As as a function of energy for selenium thickness
+% L_Se
+%% Inputs: energy, L_Se
+%% Outputs: As (one-dimensional array, length of energy)
+%% Usage: As = swank(energy,L_Se)
+%% Version History
+% 0.1   DAS  08/2012  Initial translation
+% 0.2   HZheng 10/2012
+%%
+
+Eka = 11.2;
+Ekb = 12.5;
+Ekedge = 12.66; % K-edge of Selenium
+W = 50; % eV, work function, energy required to generate free electron in a-Se at E-field of 10 V/um
+
+%Hao: I add here. As = 1 if energy<Ekedge-----------------
+num_energy=length(energy);
+As=zeros(1, num_energy)+1.0;
+%---------------------------------------------------------
+
+index = find(energy > Ekedge);    %%Hao: David here is wrong
+i1 = min(index);
+i2 = max(index);
+for i = i1:i2
+    E = energy(i);
+    [pka pkb Fin_prob_a Fin_prob_b pfa_tot pfb_tot] = kfabs(L_Se,E);
+    main_peak = 1 - pfa_tot - pfb_tot + Fin_prob_a + Fin_prob_b;
+    alpha_peak = pfa_tot - Fin_prob_a;
+    beta_peak = pfb_tot - Fin_prob_b;
+    % Calculate distributions of the main and secondary peaks and assume poisson distribution
+    EHP = E*1000/W;
+    sigma = sqrt(EHP); % Assume poisson distribution
+    EHP_a = (E-Eka)*1000/W; %%Hao: Why only consider e from k to L and M, not k to be ejected completly?
+    EHP_b = (E-Ekb)*1000/W;
+    sigma_a = sqrt(EHP_a);
+    sigma_b = sqrt(EHP_b);
+    
+%     EHPrange = 
+%     ** EHPrange = long(indgen(fix(EHP+3*sigma))+1);  
+      %%Hao: 
+%     fix: 
+%     transfer a float to integer (e.g. fix(3.8)=3)// 
+%     indgen: 
+%     returns an integer array indice with the specified dimensions (e.g. I=indgen(5)  =0,1,2,3,4 creats a
+%     5-element vector of integer values with each element set to the value
+%     of its subscript). long: set this keyword to create a longword
+%     integer array.
+    format long
+    EHPrange = 1 : (fix(EHP+3*sigma));
+    
+
+    main_dist = 1./sigma.*exp(-0.5.*(EHPrange-EHP).^2/sigma^2)*main_peak; % normal approximation
+    alpha_dist = 1./sigma_a.*exp(-0.5.*(EHPrange-EHP_a).^2/sigma_a^2)*alpha_peak;
+    beta_dist = 1./sigma_b.*exp(-0.5.*(EHPrange-EHP_b).^2/sigma_b^2)*beta_peak;
+%     main_dist = EHP^EHPrange*exp(-EHP)/factorial(EHPrange)*main_peak; % poisson
+%     alpha_dist = EHP_a^EHPrange*exp(-EHP_a)/factorial(EHPrange)*alpha_peak;
+%     beta_dist = EHP_b^EHPrange*exp(-EHP_b)/factorial(EHPrange)*beta_peak;
+    tot_dist = main_dist + alpha_dist + beta_dist;
+    M0 = sum(tot_dist);
+    M1 = sum(tot_dist.*EHPrange);
+    M2 = sum(tot_dist.*EHPrange.^2);
+    As(i) = M1*M1/M0/M2;
+end
+
+
+
+As;
+% Ass(k)=As;
+end
+
+
